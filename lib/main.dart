@@ -30,7 +30,7 @@ class BodyWidgets extends StatefulWidget {
 class _BodyWidgetsState extends State<BodyWidgets> {
   MqttRoutine _mqtt;
   String temp = 'Температура';
-  String rxData = 'Получено';
+  String rxData = '';
   String _topic = 'ESP32/serialdata/rx';
   bool relayState = false;
   TextEditingController txContr = TextEditingController();
@@ -39,7 +39,13 @@ class _BodyWidgetsState extends State<BodyWidgets> {
     if(double.tryParse(msg) != null) setState(() => temp = msg);
     else if(msg.contains('ON')) setState(() => relayState = true);
     else if(msg.contains('OFF')) setState(() => relayState = false);
-    else setState(() => rxData = msg);
+    else {
+      setState(() {
+        rxData = msg;
+        Future.delayed(Duration(seconds: 5),(){rxData='';});
+      });
+
+    }
   }
 
   @override
@@ -68,6 +74,9 @@ class _BodyWidgetsState extends State<BodyWidgets> {
                   value: relayState,
                   onChanged: (val) {
                     _mqtt.publish(_topic, val?'1':'0');
+                    setState(() {
+                      relayState = val;
+                    });
                   }
                 ),
               )
@@ -90,6 +99,7 @@ class _BodyWidgetsState extends State<BodyWidgets> {
           onPressed: () {
             _mqtt.publish(_topic, txContr.text);
             print('отправляем ${txContr.text}');
+
           },
         )
       ],
