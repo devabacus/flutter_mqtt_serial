@@ -31,18 +31,23 @@ class _BodyWidgetsState extends State<BodyWidgets> {
   MqttRoutine _mqtt;
   String temp = 'Температура';
   String rxData = 'Получено';
+  String _topic = 'ESP32/serialdata/rx';
+  bool relayState = false;
   TextEditingController txContr = TextEditingController();
 
+  parseMqttMsg(String msg){
+    if(double.tryParse(msg) != null) setState(() => temp = msg);
+    else if(msg.contains('ON')) setState(() => relayState = true);
+    else if(msg.contains('OFF')) setState(() => relayState = false);
+    else setState(() => rxData = msg);
+  }
 
   @override
   void initState() {
     _mqtt = MqttRoutine(mqttOnMessage: onMqtt, subTopic: "ESP32/serialdata/tx");
   }
   onMqtt(String msg,String topic){
-    setState(() {
-      rxData = msg;
-    });
-    print('---------------topic = $topic---------msg = $msg');
+    parseMqttMsg(msg);
   }
 
   @override
@@ -51,9 +56,22 @@ class _BodyWidgetsState extends State<BodyWidgets> {
       children: <Widget>[
         Padding(
           padding: const EdgeInsets.all(15.0),
-          child: Text(
-            temp,
-            style: TextStyle(fontSize: 30),
+          child: Row(
+            children: <Widget>[
+              Text(
+                temp,
+                style: TextStyle(fontSize: 30),
+              ),
+
+              Expanded(
+                child: SwitchListTile(
+                  value: relayState,
+                  onChanged: (val) {
+                    _mqtt.publish(_topic, val?'1':'0');
+                  }
+                ),
+              )
+            ],
           ),
         ),
         SizedBox(height: 30),
@@ -70,7 +88,7 @@ class _BodyWidgetsState extends State<BodyWidgets> {
         RaisedButton(
           child: Text('Отправить'),
           onPressed: () {
-            _mqtt.publish('ESP32/serialdata/rx', txContr.text);
+            _mqtt.publish(_topic, txContr.text);
             print('отправляем ${txContr.text}');
           },
         )
